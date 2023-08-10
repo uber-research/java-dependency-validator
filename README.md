@@ -1,6 +1,15 @@
 # Overview
 
-This tool attempts to help with problems that can arise from introducing diffs that also include modifications of the third-party library dependencies (changing/adding/removing a given version of a third-party library). This is particularly dangerous and difficult to detect if an affected library is not directly used by the user code (as then potential incompatibilities would be caught at build time) but rather is used indirectly via another third-party library that remains unchanged. The tool currently focuses on detecting missing class and missing method errors that may be a result of such third-party library dependency. At a high level, it takes a list of classes and methods defined in root jar files (i.e., jar files that define the user code logic), as well as a list of classes and methods missing in the application code after third-party library dependency change, and performs reachability analysis to find missing classes and methods reachable from from the roots.
+Dependency Validator is a Uber research tool aiming at detecting deep incompatibilities between third-party library dependency versions for a given project.
+
+When upgrading dependency versions for a project, conflicts may arise due to removed or modified classes or methods in the new dependency version. When such classes or methods are being used directly from first party code, such conflicts are easy to detect and can be pointed out by the build/compilation itself. However, when the affected class or method is not directly used by the user code, but rather is used indirectly via another third-party library that remains unchanged, then the resulting issues are more difficult to detect and might introduce runtime bugs (see Java’s [NoSuchMethodError](https://docs.oracle.com/javase%2F7%2Fdocs%2Fapi%2F%2F/java/lang/NoSuchMethodError.html) and [ClassNotFoundException](https://docs.oracle.com/javase%2F7%2Fdocs%2Fapi%2F%2F/java/lang/ClassNotFoundException.html)). If the path under which the changed/removed class or method is used is not part of the common path or not covered by tests, these bugs can be surprisingly hard to guard against, or debug once they begin triggering in production.
+
+Furthermore, just checking that all static references from every dependency A to each method of every other dependency B are correct for the given version of B can actually prove too restrictive. In practice, any given project uses only a subset of the APIs of each of its third-party dependencies, so we do not care about calls between A and B which are unreachable given our first-party project code.
+
+Thus, Dependency Validator tries to find reachable calls to removed/changed methods and reachable load operations on removed/changed classes for an updated third-party dependency.
+
+At a high level, the tool takes the full fat jar for the project (i.e. a service or application jar), along with all the pre-upgrade and post-upgrade dependency jars, and explicit knowledge of which classes and methods correspond to first-party code logic (root jar files). It then performs reachability analysis to find missing classes and methods in the post-upgrade set which are reachable from the first-party code.
+
 
 # Usage
 
@@ -12,12 +21,14 @@ Dependency validator takes five mandatory arguments
 
 1. Four arguments including data obtained from the `HEAD` version of the repository
    - `fat.jar` - service's post-commit fat jar
-   - `ext_jars.dat` - text file containing list of third-party post-commit jar files
-   - `root_jars.dat` - text file containing list of service's post-commit root jar files
-   - `root_packages.dat` - text file containing list of service's post-commit root packages
+   - `ext_jars.dat` - text file containing the paths to all third-party post-commit jar files
+   - `root_jars.dat` - text file containing the paths to all first-party (service/app) post-commit root jar files
+   - `root_packages.dat` - text file containing list of first-party (service/app) post-commit root packages (e.g. com.uber)
 2. Two arguments including data obtained from the `HEAD~1` version of the repository
    - `pre_fat.jar` - service's pre-commit fat jar
-   - `pre_ext_jars.dat` - text file containing list of third-party pre-commit jar files
+   - `pre_ext_jars.dat` - text file containing the paths to all third-party pre-commit jar files
+  
+For each of the jar-related dat files, the format is simply one path per line pointing to each jar file to load/analyze. `root_packages.dat` is similar, but each line is a Java package name.
 
 ## Running the tool
 
@@ -27,7 +38,7 @@ It is best to give the tool as much memory as possible, so it is recommended to 
 java -Xms12G -Xmx12G -jar dependency-validator.jar -fat_jar fat.jar -ext_jars ext_jars.dat -root_jars root_jars.dat -root_packages root_packages.dat -pre_fat_jar pre_fat.jar -pre_ext_jars pre_ext_jars.dat
 ```
 
-The error report format will look like the below
+The error report format is currently human-readable text and will look like the listing below
 
 ```bash
 MISSING CLASSES FOUND:
@@ -35,6 +46,8 @@ MISSING CLASSES FOUND:
         org/glassfish/jersey/internal/inject/InjectionManager
 MISSING CLASSES   2
 ```
+
+If no missing classes or methods are reported, then the Dependency Validator considers the dependency upgrade safe (from the point of view of potential NoSuchMethodError/ClassNotFoundException issues).
 
 ## Citing this work
 

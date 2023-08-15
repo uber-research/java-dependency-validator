@@ -8,7 +8,7 @@ Furthermore, just checking that all static references from every dependency A to
 
 Thus, Dependency Validator tries to find reachable calls to removed/changed methods and reachable load operations on removed/changed classes for an updated third-party dependency.
 
-At a high level, the tool takes the full fat jar for the project (i.e. a service or application jar), along with all the pre-upgrade and post-upgrade dependency jars, and explicit knowledge of which classes and methods correspond to first-party code logic (root jar files). It then performs reachability analysis to find missing classes and methods in the post-upgrade set which are reachable from the first-party code.
+At a high level, the tool takes the full fat jar for the project (i.e. a jar which includes all classes for the service or application along with all third-party dependencies which might be needed to run the project atop the standard Java JDK; rarely, this might exclude certain runtimes like Spark, with the caveat that dependency validation won't be performed for such runtimes), along with all the individual pre-upgrade and post-upgrade dependency jars (e.g. the standard jars from Maven Central for the given dependency version before and after the change), and explicit knowledge of which classes and methods correspond to first-party code logic (root jar files and packages). It then performs reachability analysis to find missing classes and methods in the post-upgrade set which are reachable from the first-party code.
 
 
 # Usage
@@ -20,15 +20,15 @@ Assume that we are trying to determine potential third-party library dependency 
 Dependency validator takes five mandatory arguments
 
 1. Four arguments including data obtained from the `HEAD` version of the repository
-   - `fat.jar` - service's post-commit fat jar
+   - `fat.jar` - project's post-commit fat jar
    - `ext_jars.dat` - text file containing the paths to all third-party post-commit jar files
    - `root_jars.dat` - text file containing the paths to all first-party (service/app) post-commit root jar files
    - `root_packages.dat` - text file containing list of first-party (service/app) post-commit root packages (e.g. com.uber)
 2. Two arguments including data obtained from the `HEAD~1` version of the repository
-   - `pre_fat.jar` - service's pre-commit fat jar
+   - `pre_fat.jar` - project's pre-commit fat jar
    - `pre_ext_jars.dat` - text file containing the paths to all third-party pre-commit jar files
   
-For each of the jar-related dat files, the format is simply one path per line pointing to each jar file to load/analyze. `root_packages.dat` is similar, but each line is a Java package name.
+For each of the jar-related dat files, the format is simply one filesystem path per line pointing to each jar file to load/analyze. `root_packages.dat` is similar, but each line is a Java package name.
 
 ## Running the tool
 

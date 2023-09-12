@@ -1,12 +1,12 @@
 # Overview
 
-Dependency Validator is a Uber research tool aiming at detecting deep incompatibilities between third-party library dependency versions for a given project.
+Java Dependency Validator is a Uber research tool aiming at detecting deep incompatibilities between third-party library dependency versions for a given project.
 
 When upgrading dependency versions for a project, conflicts may arise due to removed or modified classes or methods in the new dependency version. When such classes or methods are being used directly from first party code, such conflicts are easy to detect and can be pointed out by the build/compilation itself. However, when the affected class or method is not directly used by the user code, but rather is used indirectly via another third-party library that remains unchanged, then the resulting issues are more difficult to detect and might introduce runtime bugs (see Java’s [NoSuchMethodError](https://docs.oracle.com/javase%2F7%2Fdocs%2Fapi%2F%2F/java/lang/NoSuchMethodError.html) and [ClassNotFoundException](https://docs.oracle.com/javase%2F7%2Fdocs%2Fapi%2F%2F/java/lang/ClassNotFoundException.html)). If the path under which the changed/removed class or method is used is not part of the common path or not covered by tests, these bugs can be surprisingly hard to guard against, or debug once they begin triggering in production.
 
 Furthermore, just checking that all static references from every dependency A to each method of every other dependency B are correct for the given version of B can actually prove too restrictive. In practice, any given project uses only a subset of the APIs of each of its third-party dependencies, so we do not care about calls between A and B which are unreachable given our first-party project code.
 
-Thus, Dependency Validator tries to find reachable calls to removed/changed methods and reachable load operations on removed/changed classes for an updated third-party dependency.
+Thus, Java Dependency Validator tries to find reachable calls to removed/changed methods and reachable load operations on removed/changed classes for an updated third-party dependency.
 
 At a high level, the tool takes the full fat jar for the project (i.e. a jar which includes all classes for the service or application along with all third-party dependencies which might be needed to run the project atop the standard Java JDK; rarely, this might exclude certain runtimes like Spark, with the caveat that dependency validation won't be performed for such runtimes), along with all the individual pre-upgrade and post-upgrade dependency jars (e.g. the standard jars from Maven Central for the given dependency version before and after the change), and explicit knowledge of which classes and methods correspond to first-party code logic (root jar files and packages). It then performs reachability analysis to find missing classes and methods in the post-upgrade set which are reachable from the first-party code.
 
@@ -17,7 +17,7 @@ At a high level, the tool takes the full fat jar for the project (i.e. a jar whi
 
 Assume that we are trying to determine potential third-party library dependency violations for a given repository commit point. In other words, we are trying to determine if an classes and methods (indirectly) used by the user code pre-commit (`HEAD~1`) are missing in the fat jar post-commit (`HEAD`).
 
-Dependency validator takes five mandatory arguments
+Java Dependency validator takes five mandatory arguments
 
 1. Four arguments including data obtained from the `HEAD` version of the repository
    - `fat.jar` - project's post-commit fat jar
@@ -47,7 +47,7 @@ MISSING CLASSES FOUND:
 MISSING CLASSES   2
 ```
 
-If no missing classes or methods are reported, then the Dependency Validator considers the dependency upgrade safe (from the point of view of potential NoSuchMethodError/ClassNotFoundException issues).
+If no missing classes or methods are reported, then the Java Dependency Validator considers the dependency upgrade safe (from the point of view of potential NoSuchMethodError/ClassNotFoundException issues).
 
 ## Citing this work
 
